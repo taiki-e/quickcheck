@@ -6,6 +6,7 @@ use std::env;
 use std::ffi::{CString, OsString};
 use std::hash::{BuildHasher, Hash};
 use std::iter::{empty, once};
+#[cfg(feature = "array")]
 use std::mem::MaybeUninit;
 use std::net::{
     IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
@@ -249,6 +250,7 @@ impl_arb_for_tuples! {
     (H, 7),
 }
 
+#[cfg(feature = "array")]
 impl<T: Arbitrary + Sized, const N: usize> Arbitrary for [T; N] {
     #[allow(unused_variables)] // for [T; 0]
     fn arbitrary(g: &mut Gen) -> [T; N] {
@@ -857,7 +859,7 @@ macro_rules! signed_shrinker {
                     } else {
                         let shrinker = SignedShrinker { x: x, i: x / 2 };
                         let mut items = vec![0];
-                        if shrinker.i < 0 && shrinker.x != <$ty>::MIN {
+                        if shrinker.i < 0 && shrinker.x != <$ty>::min_value() {
                             items.push(shrinker.x.abs());
                         }
                         Box::new(items.into_iter().chain(shrinker))
@@ -868,7 +870,7 @@ macro_rules! signed_shrinker {
             impl Iterator for SignedShrinker {
                 type Item = $ty;
                 fn next(&mut self) -> Option<$ty> {
-                    if self.x == <$ty>::MIN
+                    if self.x == <$ty>::min_value()
                         || (self.x - self.i).abs() < self.x.abs()
                     {
                         let result = Some(self.x - self.i);
@@ -1454,6 +1456,7 @@ mod test {
         eq(Wrapping(0i32), vec![]);
     }
 
+    #[cfg(feature = "array")]
     #[test]
     fn arrays() {
         eq([true], vec![[false]]);
