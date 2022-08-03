@@ -4,6 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::ffi::CString;
 use std::hash::BuildHasherDefault;
 use std::path::PathBuf;
+use std::string::String;
+use std::vec;
+use std::vec::Vec;
 
 use super::{quickcheck, Gen, QuickCheck, TestResult};
 

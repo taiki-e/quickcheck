@@ -14,6 +14,13 @@ new kind of witness being generated. These sorts of changes may happen in
 semver compatible releases.
 */
 
+#![no_std]
+
+extern crate alloc;
+
+#[cfg(any(test, feature = "std"))]
+extern crate std;
+
 pub use crate::arbitrary::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 pub use crate::tester::{quickcheck, QuickCheck, TestResult, Testable};
 

@@ -1,27 +1,36 @@
-use std::char;
-use std::collections::{
-    BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque,
+use alloc::collections::{
+    BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque,
 };
-use std::env;
-use std::ffi::{CString, OsString};
-use std::hash::{BuildHasher, Hash};
-use std::iter::{empty, once};
+use alloc::sync::Arc;
+use core::char;
+use core::iter::{empty, once};
 #[cfg(feature = "array")]
-use std::mem::MaybeUninit;
-use std::net::{
-    IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
-};
-use std::num::Wrapping;
-use std::num::{
+use core::mem::MaybeUninit;
+use core::num::Wrapping;
+use core::num::{
     NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize,
 };
-use std::ops::{
+use core::ops::{
     Bound, Range, RangeFrom, RangeFull, RangeInclusive, RangeTo,
     RangeToInclusive,
 };
+use core::time::Duration;
+#[cfg(feature = "std")]
+use std::collections::{HashMap, HashSet};
+#[cfg(feature = "std")]
+use std::env;
+#[cfg(feature = "std")]
+use std::ffi::{CString, OsString};
+#[cfg(feature = "std")]
+use std::hash::{BuildHasher, Hash};
+#[cfg(feature = "std")]
+use std::net::{
+    IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
+};
+#[cfg(feature = "std")]
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+#[cfg(feature = "std")]
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::seq::SliceRandom;
 use rand::{self, Rng, SeedableRng};

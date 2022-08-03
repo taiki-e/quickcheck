@@ -18,8 +18,10 @@ members = ["quickcheck_macros"]
 
 [features]
 default = ["regex", "use_logging"]
+# default = ["std", "regex", "use_logging"]
 use_logging = ["log", "env_logger"]
 regex = ["env_logger/regex"]
+# std = []
 array = []
 
 [lib]

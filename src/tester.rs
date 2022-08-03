@@ -1,7 +1,11 @@
-use std::cmp;
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::cmp;
+use core::fmt::Debug;
+use core::panic;
+#[cfg(feature = "std")]
 use std::env;
-use std::fmt::Debug;
-use std::panic;
 
 use crate::{
     tester::Status::{Discard, Fail, Pass},
@@ -18,34 +22,50 @@ pub struct QuickCheck {
 
 fn qc_tests() -> u64 {
     let default = 100;
-    match env::var("QUICKCHECK_TESTS") {
-        Ok(val) => val.parse().unwrap_or(default),
-        Err(_) => default,
+    #[cfg(feature = "std")]
+    {
+        match env::var("QUICKCHECK_TESTS") {
+            Ok(val) => return val.parse().unwrap_or(default),
+            Err(_) => {}
+        }
     }
+    default
 }
 
 fn qc_max_tests() -> u64 {
     let default = 10_000;
-    match env::var("QUICKCHECK_MAX_TESTS") {
-        Ok(val) => val.parse().unwrap_or(default),
-        Err(_) => default,
+    #[cfg(feature = "std")]
+    {
+        match env::var("QUICKCHECK_MAX_TESTS") {
+            Ok(val) => return val.parse().unwrap_or(default),
+            Err(_) => {}
+        }
     }
+    default
 }
 
 fn qc_gen_size() -> usize {
     let default = 100;
-    match env::var("QUICKCHECK_GENERATOR_SIZE") {
-        Ok(val) => val.parse().unwrap_or(default),
-        Err(_) => default,
+    #[cfg(feature = "std")]
+    {
+        match env::var("QUICKCHECK_GENERATOR_SIZE") {
+            Ok(val) => return val.parse().unwrap_or(default),
+            Err(_) => {}
+        }
     }
+    default
 }
 
 fn qc_min_tests_passed() -> u64 {
     let default = 0;
-    match env::var("QUICKCHECK_MIN_TESTS_PASSED") {
-        Ok(val) => val.parse().unwrap_or(default),
-        Err(_) => default,
+    #[cfg(feature = "std")]
+    {
+        match env::var("QUICKCHECK_MIN_TESTS_PASSED") {
+            Ok(val) => return val.parse().unwrap_or(default),
+            Err(_) => {}
+        }
     }
+    default
 }
 
 impl QuickCheck {
@@ -240,6 +260,7 @@ impl TestResult {
 
     /// Tests if a "procedure" fails when executed. The test passes only if
     /// `f` generates a task failure during its execution.
+    #[cfg(feature = "std")]
     pub fn must_fail<T, F>(f: F) -> TestResult
     where
         F: FnOnce() -> T,
