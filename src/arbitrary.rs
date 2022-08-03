@@ -1,8 +1,14 @@
+use alloc::borrow::ToOwned;
+use alloc::boxed::Box;
 use alloc::collections::{
     BTreeMap, BTreeSet, BinaryHeap, LinkedList, VecDeque,
 };
+use alloc::string::String;
 use alloc::sync::Arc;
+use alloc::vec;
+use alloc::vec::Vec;
 use core::char;
+use core::hash::{BuildHasher, Hash};
 use core::iter::{empty, once};
 #[cfg(feature = "array")]
 use core::mem::MaybeUninit;
@@ -21,8 +27,6 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 #[cfg(feature = "std")]
 use std::ffi::{CString, OsString};
-#[cfg(feature = "std")]
-use std::hash::{BuildHasher, Hash};
 #[cfg(feature = "std")]
 use std::net::{
     IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6,
@@ -220,7 +224,7 @@ macro_rules! impl_arb_for_single_tuple {
             }
 
             fn shrink(&self) -> Box<dyn Iterator<Item=($($type_param,)*)>> {
-                let iter = ::std::iter::empty();
+                let iter = ::core::iter::empty();
                 $(
                     let cloned = self.clone();
                     let iter = iter.chain(
@@ -286,7 +290,7 @@ impl<T: Arbitrary + Sized, const N: usize> Arbitrary for [T; N] {
         // (We need to use `transmute_copy` here as `transmute`
         // has some limitations around generic types:
         // https://github.com/rust-lang/rust/issues/47966)
-        unsafe { std::mem::transmute_copy::<_, [T; N]>(&maybe_uninit) }
+        unsafe { core::mem::transmute_copy::<_, [T; N]>(&maybe_uninit) }
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = [T; N]>> {
@@ -431,6 +435,7 @@ impl<K: Arbitrary + Ord, V: Arbitrary> Arbitrary for BTreeMap<K, V> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<
         K: Arbitrary + Eq + Hash,
         V: Arbitrary,
@@ -474,6 +479,7 @@ impl<T: Arbitrary + Ord> Arbitrary for BinaryHeap<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl<T: Arbitrary + Eq + Hash, S: BuildHasher + Default + Clone + 'static>
     Arbitrary for HashSet<T, S>
 {
@@ -514,6 +520,7 @@ impl<T: Arbitrary> Arbitrary for VecDeque<T> {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for IpAddr {
     fn arbitrary(g: &mut Gen) -> IpAddr {
         let ipv4: bool = g.gen();
@@ -525,12 +532,14 @@ impl Arbitrary for IpAddr {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for Ipv4Addr {
     fn arbitrary(g: &mut Gen) -> Ipv4Addr {
         Ipv4Addr::new(g.gen(), g.gen(), g.gen(), g.gen())
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for Ipv6Addr {
     fn arbitrary(g: &mut Gen) -> Ipv6Addr {
         Ipv6Addr::new(
@@ -546,24 +555,28 @@ impl Arbitrary for Ipv6Addr {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for SocketAddr {
     fn arbitrary(g: &mut Gen) -> SocketAddr {
         SocketAddr::new(Arbitrary::arbitrary(g), g.gen())
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for SocketAddrV4 {
     fn arbitrary(g: &mut Gen) -> SocketAddrV4 {
         SocketAddrV4::new(Arbitrary::arbitrary(g), g.gen())
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for SocketAddrV6 {
     fn arbitrary(g: &mut Gen) -> SocketAddrV6 {
         SocketAddrV6::new(Arbitrary::arbitrary(g), g.gen(), g.gen(), g.gen())
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for PathBuf {
     fn arbitrary(g: &mut Gen) -> PathBuf {
         // use some real directories as guesses, so we may end up with
@@ -615,6 +628,7 @@ impl Arbitrary for PathBuf {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for OsString {
     fn arbitrary(g: &mut Gen) -> OsString {
         OsString::from(String::arbitrary(g))
@@ -642,6 +656,7 @@ impl Arbitrary for String {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for CString {
     fn arbitrary(g: &mut Gen) -> Self {
         let size = {
@@ -787,6 +802,9 @@ impl Arbitrary for char {
 macro_rules! unsigned_shrinker {
     ($ty:ty) => {
         mod shrinker {
+            use alloc::boxed::Box;
+            use alloc::vec;
+
             pub struct UnsignedShrinker {
                 x: $ty,
                 i: $ty,
@@ -856,6 +874,9 @@ unsigned_arbitrary! {
 macro_rules! signed_shrinker {
     ($ty:ty) => {
         mod shrinker {
+            use alloc::boxed::Box;
+            use alloc::vec;
+
             pub struct SignedShrinker {
                 x: $ty,
                 i: $ty,
@@ -957,11 +978,13 @@ macro_rules! float_arbitrary {
     )*};
 }
 
-float_arbitrary!(f32, std::f32, i32, f64, std::f64, i64);
+float_arbitrary!(f32, core::f32, i32, f64, core::f64, i64);
 
 macro_rules! unsigned_non_zero_shrinker {
     ($ty:tt) => {
         mod shrinker {
+            use alloc::boxed::Box;
+
             pub struct UnsignedNonZeroShrinker {
                 x: $ty,
                 i: $ty,
@@ -975,7 +998,7 @@ macro_rules! unsigned_non_zero_shrinker {
                         super::empty_shrinker()
                     } else {
                         Box::new(
-                            std::iter::once(1).chain(
+                            core::iter::once(1).chain(
                                 UnsignedNonZeroShrinker { x: x, i: x / 2 },
                             ),
                         )
@@ -1155,6 +1178,7 @@ impl<A: Arbitrary + Sync> Arbitrary for Arc<A> {
     }
 }
 
+#[cfg(feature = "std")]
 impl Arbitrary for SystemTime {
     fn arbitrary(gen: &mut Gen) -> Self {
         let after_epoch = bool::arbitrary(gen);
@@ -1181,13 +1205,17 @@ impl Arbitrary for SystemTime {
 
 #[cfg(test)]
 mod test {
+    use std::boxed::Box;
     use std::collections::{
         BTreeMap, BTreeSet, BinaryHeap, HashMap, HashSet, LinkedList, VecDeque,
     };
     use std::fmt::Debug;
+    use std::format;
     use std::hash::Hash;
     use std::num::Wrapping;
     use std::path::PathBuf;
+    use std::vec;
+    use std::vec::Vec;
 
     use super::{Arbitrary, Gen};
 
@@ -1420,11 +1448,11 @@ mod test {
                 for n in v {
                     let found = shrunk.iter().any(|&i| i == n);
                     if !found {
-                        panic!(format!(
+                        panic!(
                             "Element {:?} was not found \
                              in shrink results {:?}",
                             n, shrunk
-                        ));
+                        );
                     }
                 }
             }

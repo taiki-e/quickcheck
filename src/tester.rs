@@ -1,11 +1,13 @@
+use alloc::borrow::ToOwned;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp;
 use core::fmt::Debug;
-use core::panic;
 #[cfg(feature = "std")]
 use std::env;
+#[cfg(feature = "std")]
+use std::panic;
 
 use crate::{
     tester::Status::{Discard, Fail, Pass},
@@ -433,6 +435,10 @@ impl<A: Arbitrary + Debug> AShow for A {}
 
 #[cfg(test)]
 mod test {
+    use std::format;
+    use std::vec;
+    use std::vec::Vec;
+
     use crate::{Gen, QuickCheck};
 
     #[test]

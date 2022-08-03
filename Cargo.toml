@@ -21,7 +21,7 @@ default = ["regex", "use_logging"]
 # default = ["std", "regex", "use_logging"]
 use_logging = ["log", "env_logger"]
 regex = ["env_logger/regex"]
-# std = []
+std = []
 array = []
 
 [lib]
@@ -30,4 +30,4 @@ name = "quickcheck"
 [dependencies]
 env_logger = { version = "0.8.2", default-features = false, optional = true }
 log = { version = "0.4", optional = true }
-rand = { version = "0.8", default-features = false, features = ["getrandom", "small_rng"] }
+rand = { version = "0.8", default-features = false, features = ["alloc", "small_rng"] }
