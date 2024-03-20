@@ -24,7 +24,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rand::seq::SliceRandom;
-use rand::{self, Rng, SeedableRng};
+use rand::{Rng, SeedableRng};
 
 /// Gen represents a PRNG.
 ///
