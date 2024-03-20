@@ -407,6 +407,7 @@ where
 }
 
 /// Convenient aliases.
+#[allow(dead_code)]
 trait AShow: Arbitrary + Debug {}
 impl<A: Arbitrary + Debug> AShow for A {}
 
