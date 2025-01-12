@@ -14,6 +14,9 @@ new kind of witness being generated. These sorts of changes may happen in
 semver compatible releases.
 */
 
+#![cfg_attr(quickcheck_unstable_f16, feature(f16))]
+#![cfg_attr(quickcheck_unstable_f128, feature(f128))]
+
 pub use crate::arbitrary::{empty_shrinker, single_shrinker, Arbitrary, Gen};
 pub use crate::tester::{quickcheck, QuickCheck, TestResult, Testable};
 

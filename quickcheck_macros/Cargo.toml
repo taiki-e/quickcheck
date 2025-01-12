@@ -23,3 +23,6 @@ syn = { version = "1.0", features = ["full"] }
 
 [dev-dependencies]
 quickcheck = { path = "..", version = "1.0.0" }
+
+[lints]
+workspace = true

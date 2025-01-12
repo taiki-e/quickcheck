@@ -915,22 +915,19 @@ signed_arbitrary! {
 }
 
 macro_rules! float_problem_values {
-    ($path:path) => {{
-        // hack. see: https://github.com/rust-lang/rust/issues/48067
-        use $path as p;
-        &[p::NAN, p::NEG_INFINITY, p::MIN, -0., 0., p::MAX, p::INFINITY]
+    ($t:ident) => {{
+        &[$t::NAN, $t::NEG_INFINITY, $t::MIN, -0., 0., $t::MAX, $t::INFINITY]
     }};
 }
 
 macro_rules! float_arbitrary {
-    ($($t:ty, $path:path, $shrinkable:ty),+) => {$(
+    ($($t:ident, $path:path, $shrinkable:ty),+) => {$(
         impl Arbitrary for $t {
             fn arbitrary(g: &mut Gen) -> $t {
                 match g.gen_range(0..10) {
-                    0 => *g.choose(float_problem_values!($path)).unwrap(),
+                    0 => *g.choose(float_problem_values!($t)).unwrap(),
                     _ => {
-                        use $path as p;
-                        let exp = g.gen_range((0.)..p::MAX_EXP as i16 as $t);
+                        let exp = g.gen_range((0.)..$t::MAX_EXP as i16 as $t);
                         let mantissa = g.gen_range((1.)..2.);
                         let sign = *g.choose(&[-1., 1.]).unwrap();
                         sign * mantissa * exp.exp2()
@@ -948,6 +945,10 @@ macro_rules! float_arbitrary {
 }
 
 float_arbitrary!(f32, std::f32, i32, f64, std::f64, i64);
+#[cfg(quickcheck_unstable_f16)]
+float_arbitrary!(f16, std::f16, i16);
+#[cfg(quickcheck_unstable_f128)]
+float_arbitrary!(f128, std::f128, i128);
 
 macro_rules! unsigned_non_zero_shrinker {
     ($ty:tt) => {
@@ -1228,14 +1229,14 @@ mod test {
     }
 
     macro_rules! arby_float {
-        ($($t:ty, $path:path),+) => {$({
+        ($($t:ident, $path:path),+) => {$({
             use $path as p;
             let mut arbys = (0..1_000_000).map(|_| arby::<$t>());
             //NaN != NaN
             assert!(arbys.any(|f| f.is_nan()),
                 "Arbitrary does not generate the problematic value NaN"
             );
-            for p in float_problem_values!($path).iter().filter(|f| !f.is_nan()) {
+            for p in float_problem_values!($t).iter().filter(|f| !f.is_nan()) {
                 assert!(arbys.any(|arby| arby == *p),
                     "Arbitrary does not generate the problematic value {}",
                     p
