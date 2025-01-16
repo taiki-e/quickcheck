@@ -153,6 +153,7 @@ impl QuickCheck {
     ///     QuickCheck::new().quickcheck(revrev as fn(Vec<usize>) -> bool);
     /// }
     /// ```
+    #[track_caller]
     pub fn quickcheck<A>(&mut self, f: A)
     where
         A: Testable,
