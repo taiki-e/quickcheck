@@ -23,9 +23,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use rand::seq::SliceRandom;
-use rand::{Rng, SeedableRng};
-
 /// Gen represents a PRNG.
 ///
 /// It is the source of randomness from which QuickCheck will generate
@@ -36,7 +33,7 @@ use rand::{Rng, SeedableRng};
 /// It is unspecified whether this is a secure RNG or not. Therefore, callers
 /// should assume it is insecure.
 pub struct Gen {
-    rng: rand::rngs::SmallRng,
+    rng: fastrand::Rng,
     size: usize,
 }
 
@@ -49,7 +46,7 @@ impl Gen {
     /// randomly generated number. (Unless that number is used to control the
     /// size of a data structure.)
     pub fn new(size: usize) -> Gen {
-        Gen { rng: rand::rngs::SmallRng::from_entropy(), size: size }
+        Gen { rng: fastrand::Rng::new(), size: size }
     }
 
     /// Returns the size configured with this generator.
@@ -61,22 +58,7 @@ impl Gen {
     /// is empty, then `None` is returned. Otherwise, a non-`None` value is
     /// guaranteed to be returned.
     pub fn choose<'a, T>(&mut self, slice: &'a [T]) -> Option<&'a T> {
-        slice.choose(&mut self.rng)
-    }
-
-    fn gen<T>(&mut self) -> T
-    where
-        rand::distributions::Standard: rand::distributions::Distribution<T>,
-    {
-        self.rng.gen()
-    }
-
-    fn gen_range<T, R>(&mut self, range: R) -> T
-    where
-        T: rand::distributions::uniform::SampleUniform,
-        R: rand::distributions::uniform::SampleRange<T>,
-    {
-        self.rng.gen_range(range)
+        self.rng.choice(slice)
     }
 }
 
@@ -140,7 +122,7 @@ impl Arbitrary for () {
 
 impl Arbitrary for bool {
     fn arbitrary(g: &mut Gen) -> bool {
-        g.gen()
+        g.rng.bool()
     }
 
     fn shrink(&self) -> Box<dyn Iterator<Item = bool>> {
@@ -154,7 +136,7 @@ impl Arbitrary for bool {
 
 impl<A: Arbitrary> Arbitrary for Option<A> {
     fn arbitrary(g: &mut Gen) -> Option<A> {
-        if g.gen() {
+        if g.rng.bool() {
             None
         } else {
             Some(Arbitrary::arbitrary(g))
@@ -174,7 +156,7 @@ impl<A: Arbitrary> Arbitrary for Option<A> {
 
 impl<A: Arbitrary, B: Arbitrary> Arbitrary for Result<A, B> {
     fn arbitrary(g: &mut Gen) -> Result<A, B> {
-        if g.gen() {
+        if g.rng.bool() {
             Ok(Arbitrary::arbitrary(g))
         } else {
             Err(Arbitrary::arbitrary(g))
@@ -298,7 +280,7 @@ impl<A: Arbitrary> Arbitrary for Vec<A> {
     fn arbitrary(g: &mut Gen) -> Vec<A> {
         let size = {
             let s = g.size();
-            g.gen_range(0..s)
+            g.rng.usize(0..s)
         };
         (0..size).map(|_| A::arbitrary(g)).collect()
     }
@@ -507,7 +489,7 @@ impl<T: Arbitrary> Arbitrary for VecDeque<T> {
 
 impl Arbitrary for IpAddr {
     fn arbitrary(g: &mut Gen) -> IpAddr {
-        let ipv4: bool = g.gen();
+        let ipv4: bool = g.rng.bool();
         if ipv4 {
             IpAddr::V4(Arbitrary::arbitrary(g))
         } else {
@@ -518,40 +500,45 @@ impl Arbitrary for IpAddr {
 
 impl Arbitrary for Ipv4Addr {
     fn arbitrary(g: &mut Gen) -> Ipv4Addr {
-        Ipv4Addr::new(g.gen(), g.gen(), g.gen(), g.gen())
+        Ipv4Addr::new(g.rng.u8(..), g.rng.u8(..), g.rng.u8(..), g.rng.u8(..))
     }
 }
 
 impl Arbitrary for Ipv6Addr {
     fn arbitrary(g: &mut Gen) -> Ipv6Addr {
         Ipv6Addr::new(
-            g.gen(),
-            g.gen(),
-            g.gen(),
-            g.gen(),
-            g.gen(),
-            g.gen(),
-            g.gen(),
-            g.gen(),
+            g.rng.u16(..),
+            g.rng.u16(..),
+            g.rng.u16(..),
+            g.rng.u16(..),
+            g.rng.u16(..),
+            g.rng.u16(..),
+            g.rng.u16(..),
+            g.rng.u16(..),
         )
     }
 }
 
 impl Arbitrary for SocketAddr {
     fn arbitrary(g: &mut Gen) -> SocketAddr {
-        SocketAddr::new(Arbitrary::arbitrary(g), g.gen())
+        SocketAddr::new(Arbitrary::arbitrary(g), g.rng.u16(..))
     }
 }
 
 impl Arbitrary for SocketAddrV4 {
     fn arbitrary(g: &mut Gen) -> SocketAddrV4 {
-        SocketAddrV4::new(Arbitrary::arbitrary(g), g.gen())
+        SocketAddrV4::new(Arbitrary::arbitrary(g), g.rng.u16(..))
     }
 }
 
 impl Arbitrary for SocketAddrV6 {
     fn arbitrary(g: &mut Gen) -> SocketAddrV6 {
-        SocketAddrV6::new(Arbitrary::arbitrary(g), g.gen(), g.gen(), g.gen())
+        SocketAddrV6::new(
+            Arbitrary::arbitrary(g),
+            g.rng.u16(..),
+            g.rng.u32(..),
+            g.rng.u32(..),
+        )
     }
 }
 
@@ -621,7 +608,7 @@ impl Arbitrary for String {
     fn arbitrary(g: &mut Gen) -> String {
         let size = {
             let s = g.size();
-            g.gen_range(0..s)
+            g.rng.usize(0..s)
         };
         (0..size).map(|_| char::arbitrary(g)).collect()
     }
@@ -637,10 +624,10 @@ impl Arbitrary for CString {
     fn arbitrary(g: &mut Gen) -> Self {
         let size = {
             let s = g.size();
-            g.gen_range(0..s)
+            g.rng.usize(0..s)
         };
         // Use either random bytes or random UTF-8 encoded codepoints.
-        let utf8: bool = g.gen();
+        let utf8: bool = g.rng.bool();
         if utf8 {
             CString::new(
                 (0..)
@@ -675,16 +662,16 @@ impl Arbitrary for CString {
 
 impl Arbitrary for char {
     fn arbitrary(g: &mut Gen) -> char {
-        let mode = g.gen_range(0..100);
+        let mode = g.rng.u8(0..100);
         match mode {
             0..=49 => {
                 // ASCII + some control characters
-                g.gen_range(0..0xB0) as u8 as char
+                g.rng.u8(0..0xB0) as u8 as char
             }
             50..=59 => {
                 // Unicode BMP characters
                 loop {
-                    if let Some(x) = char::from_u32(g.gen_range(0..0x10000)) {
+                    if let Some(x) = char::from_u32(g.rng.u32(0..0x10000)) {
                         return x;
                     }
                     // ignore surrogate pairs
@@ -760,11 +747,11 @@ impl Arbitrary for char {
             }
             90..=94 => {
                 // Tricky unicode, part 2
-                char::from_u32(g.gen_range(0x2000..0x2070)).unwrap()
+                char::from_u32(g.rng.u32(0x2000..0x2070)).unwrap()
             }
             95..=99 => {
                 // Completely arbitrary characters
-                g.gen()
+                g.rng.char(..)
             }
             _ => unreachable!(),
         }
@@ -824,11 +811,11 @@ macro_rules! unsigned_arbitrary {
         $(
             impl Arbitrary for $ty {
                 fn arbitrary(g: &mut Gen) -> $ty {
-                    match g.gen_range(0..10) {
+                    match g.rng.u8(0..10) {
                         0 => {
                             *g.choose(unsigned_problem_values!($ty)).unwrap()
                         },
-                        _ => g.gen()
+                        _ => g.rng.$ty(..)
                     }
                 }
                 fn shrink(&self) -> Box<dyn Iterator<Item=$ty>> {
@@ -894,11 +881,11 @@ macro_rules! signed_arbitrary {
         $(
             impl Arbitrary for $ty {
                 fn arbitrary(g: &mut Gen) -> $ty {
-                    match g.gen_range(0..10) {
+                    match g.rng.u8(0..10) {
                         0 => {
                             *g.choose(signed_problem_values!($ty)).unwrap()
                         },
-                        _ => g.gen()
+                        _ => g.rng.$ty(..)
                     }
                 }
                 fn shrink(&self) -> Box<dyn Iterator<Item=$ty>> {
@@ -914,6 +901,7 @@ signed_arbitrary! {
     isize, i8, i16, i32, i64, i128
 }
 
+#[cfg(feature = "float")]
 macro_rules! float_problem_values {
     ($t:ident) => {{
         &[$t::NAN, $t::NEG_INFINITY, $t::MIN, -0., 0., $t::MAX, $t::INFINITY]
@@ -921,14 +909,16 @@ macro_rules! float_problem_values {
 }
 
 macro_rules! float_arbitrary {
-    ($($t:ident, $path:path, $shrinkable:ty),+) => {$(
+    ($($t:ident, $range:ident, $path:path, $shrinkable:ty),+) => {$(
+        #[cfg(feature = "float")]
         impl Arbitrary for $t {
             fn arbitrary(g: &mut Gen) -> $t {
-                match g.gen_range(0..10) {
+                match g.rng.u8(0..10) {
                     0 => *g.choose(float_problem_values!($t)).unwrap(),
                     _ => {
-                        let exp = g.gen_range((0.)..$t::MAX_EXP as i16 as $t);
-                        let mantissa = g.gen_range((1.)..2.);
+                        use fastrand_contrib::RngExt as _;
+                        let exp = g.rng.$range((0.)..$t::MAX_EXP as i16 as $t);
+                        let mantissa = g.rng.$range((1.)..2.);
                         let sign = *g.choose(&[-1., 1.]).unwrap();
                         sign * mantissa * exp.exp2()
                     }
@@ -944,11 +934,11 @@ macro_rules! float_arbitrary {
     )*};
 }
 
-float_arbitrary!(f32, std::f32, i32, f64, std::f64, i64);
+float_arbitrary!(f32, f32_range, std::f32, i32, f64, f64_range, std::f64, i64);
 #[cfg(quickcheck_unstable_f16)]
-float_arbitrary!(f16, std::f16, i16);
+float_arbitrary!(f16, f16_range, std::f16, i16);
 #[cfg(quickcheck_unstable_f128)]
-float_arbitrary!(f128, std::f128, i128);
+float_arbitrary!(f128, f128_range, std::f128, i128);
 
 macro_rules! unsigned_non_zero_shrinker {
     ($ty:tt) => {
@@ -996,7 +986,7 @@ macro_rules! unsigned_non_zero_arbitrary {
         $(
             impl Arbitrary for $ty {
                 fn arbitrary(g: &mut Gen) -> $ty {
-                    let mut v: $inner = g.gen();
+                    let mut v: $inner = g.rng.$inner(..);
                     if v == 0 {
                         v += 1;
                     }
@@ -1034,7 +1024,7 @@ impl<T: Arbitrary> Arbitrary for Wrapping<T> {
 
 impl<T: Arbitrary> Arbitrary for Bound<T> {
     fn arbitrary(g: &mut Gen) -> Bound<T> {
-        match g.gen_range(0..3) {
+        match g.rng.u8(0..3) {
             0 => Bound::Included(T::arbitrary(g)),
             1 => Bound::Excluded(T::arbitrary(g)),
             _ => Bound::Unbounded,
@@ -1112,8 +1102,8 @@ impl Arbitrary for RangeFull {
 
 impl Arbitrary for Duration {
     fn arbitrary(gen: &mut Gen) -> Self {
-        let seconds = gen.gen_range(0..gen.size() as u64);
-        let nanoseconds = gen.gen_range(0..1_000_000);
+        let seconds = gen.rng.u64(0..gen.size() as u64);
+        let nanoseconds = gen.rng.u32(0..1_000_000);
         Duration::new(seconds, nanoseconds)
     }
 
